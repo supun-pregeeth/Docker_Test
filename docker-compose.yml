@@ -1,8 +1,6 @@
-version: '3.9'
-
 services:
   frontend:
-    build: ./my-react-app/frontend
+    build: ./frontend
     ports:
       - "3000:3000"
     depends_on:
@@ -25,7 +23,7 @@ services:
       start_period: 5s
 
   backend:
-    build: ./my-react-app/backend
+    build: ./backend
     ports:
       - "5000:5000"
     environment:
