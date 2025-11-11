@@ -2,75 +2,57 @@ pipeline {
     agent any
 
     environment {
-        // Docker Hub credentials ID in Jenkins (you need to create this in Jenkins)
-        DOCKERHUB_CREDENTIALS = 'dockerhub-credentials-id'  
-        
-        // Docker Hub username
-        DOCKERHUB_USERNAME = 'eg245453'
-        
-        // Full image names with tags
-        FRONTEND_IMAGE = "eg245453/my-react-frontend:latest"
-        BACKEND_IMAGE = "eg245453/my-react-backend:latest"
+        DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials-id')
+        FRONTEND_IMAGE = "eg245453/devops-frontend"
+        BACKEND_IMAGE = "eg245453/devops-backend"
     }
 
     stages {
-
         stage('Checkout') {
             steps {
-                // Pull the project from GitHub
                 git branch: 'master', url: 'https://github.com/supun-pregeeth/Docker_Test.git'
             }
         }
 
-        stage('Build Frontend Docker Image') {
+        stage('Build Backend JAR') {
             steps {
-                script {
-                    echo "Building frontend image..."
-                    docker.build("${FRONTEND_IMAGE}", "./frontend")
+                dir('backend') {
+                    sh './mvnw clean package -DskipTests'
                 }
             }
         }
 
-        stage('Build Backend Docker Image') {
+        stage('Build Docker Images') {
             steps {
                 script {
-                    echo "Building backend image..."
-                    docker.build("${BACKEND_IMAGE}", "./backend")
+                    sh 'docker build -t $FRONTEND_IMAGE:latest ./frontend'
+                    sh 'docker build -t $BACKEND_IMAGE:latest ./backend'
                 }
             }
         }
 
-        stage('Login to Docker Hub') {
+        stage('Push to Docker Hub') {
             steps {
                 script {
-                    docker.withRegistry('https://index.docker.io/v1/', "${DOCKERHUB_CREDENTIALS}") {
-                        echo "Logged in to Docker Hub"
-                    }
-                }
-            }
-        }
-
-        stage('Push Docker Images') {
-            steps {
-                script {
-                    docker.withRegistry('https://index.docker.io/v1/', "${DOCKERHUB_CREDENTIALS}") {
-                        echo "Pushing frontend image..."
-                        docker.image("${FRONTEND_IMAGE}").push()
-                        
-                        echo "Pushing backend image..."
-                        docker.image("${BACKEND_IMAGE}").push()
-                    }
+                    sh "echo \$DOCKERHUB_CREDENTIALS_PSW | docker login -u \$DOCKERHUB_CREDENTIALS_USR --password-stdin"
+                    sh 'docker push $FRONTEND_IMAGE:latest'
+                    sh 'docker push $BACKEND_IMAGE:latest'
                 }
             }
         }
     }
 
     post {
+        always {
+            script {
+                sh 'docker logout || true'
+            }
+        }
         success {
-            echo "✅ Docker images built and pushed successfully!"
+            echo 'Pipeline completed successfully!'
         }
         failure {
-            echo "❌ Build failed!"
+            echo 'Pipeline failed. Check the logs for details.'
         }
     }
 }
