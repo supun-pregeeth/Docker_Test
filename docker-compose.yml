@@ -1,0 +1,40 @@
+version: '3.9'
+
+services:
+  frontend:
+    build: ./my-react-app/frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+  db:
+    image: mariadb:11.8.2
+    environment:
+      MYSQL_ROOT_PASSWORD: 123
+      MYSQL_DATABASE: loginDB
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./db-init:/docker-entrypoint-initdb.d   # initialization SQL
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      retries: 10
+      start_period: 5s
+
+  backend:
+    build: ./my-react-app/backend
+    ports:
+      - "5000:5000"
+    environment:
+      DB_HOST: db
+      DB_USER: root
+      DB_PASSWORD: 123
+      DB_NAME: loginDB
+    depends_on:
+      - db
+
+volumes:
+  db_data:
